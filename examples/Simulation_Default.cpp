@@ -16,8 +16,7 @@ static Particle* A, * B;
 
 void Simulation::Setup()
 {
-	this->MD = {"Default", 512, 256, 20.0};
-
+	this->MD = {"Default", 512, 256, 1.0};
 
 	A = new Particle();
 	this->ParticleList.push_back(A);
@@ -25,13 +24,17 @@ void Simulation::Setup()
 	B = new Particle();
 	this->ParticleList.push_back(B);
 
-	A->Mass = 1.0;
 	A->R = 0.01;
-	A->Location = {200.0, 0.0, 0.0};
+	B->R = 0.01;
+
+	A->Color = {255, 0, 0};
+	B->Color = {0, 255, 0};
+
+	A->Mass = 1.0;
+	A->Location = {2.0, 0.0, 0.0};
 
 	B->Mass = 1.0;
-	B->R = 0.01;
-	B->Location = {-200.0, 0.0, 0.0};
+	B->Location = {-2.0, 0.0, 0.0};
 }
 
 void Simulation::PreUpdate(double dt)

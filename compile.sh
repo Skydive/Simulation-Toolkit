@@ -1,6 +1,6 @@
 # KMake - because a Makefile with small projects is for losers!
 #!/bin/bash
-rm main
+cd "${0%/*}"
 
 CPP_FILES="./src/Main.cpp"
 files=$(find src -name '*.hpp')
@@ -15,7 +15,7 @@ for f in $files; do
 		fi
 	done < $f
 done
-g++ $CPP_FILES -o main \
+g++ $CPP_FILES -o build/main \
 	-std=c++1z -Iinclude \
 	$(pkg-config eigen3 sdl2 --cflags --libs) \
 	-g -pipe \

@@ -5,41 +5,57 @@
 #include <string>
 #include <functional>
 
-#include <dlfcn.h>
+
+#ifdef __linux__
+	#include <dlfcn.h>
+	#define SharedLibrary void*
+	#define LoadSharedLibrary(lib) dlopen(lib, RTLD_NOW)
+	#define FreeSharedLibrary(lib) dlclose(lib)
+	#define LoadFunction(dllhandle, fstr) dlsym(dllhandle, fstr)
+	#include <SDL.h>
+#elif _WIN32
+	#include <windows.h>
+	#define SharedLibrary HMODULE
+	#define LoadSharedLibrary(lib) LoadLibrary(lib)
+	#define FreeSharedLibrary(lib) FreeLibrary(lib)
+	#define LoadFunction(dllhandle, fstr) GetProcAddress(dllhandle, fstr)
+	#include <SDL2/SDL.h>
+#endif
+
 #include <cstdlib>
 
 #include <chrono>
 #include <cmath>
-#include <SDL.h>
 
 #include <Simulation.hpp>
-
-
 
 
 static void SDLG_RenderCircle(SDL_Renderer* renderer, int x, int y, int r)
 {
 	for(int i=-r; i<=r; i++)
 		for(int j=-r; j<=r; j++)
-			if(pow(i, 2) + pow(j, 2) < pow(r, 2))
+			if(pow(i, 2) + pow(j, 2) < pow(r, 2)+1)
 				SDL_RenderDrawPoint(renderer, x+i, y+j);
 }
 
-static void* handle;
+static SharedLibrary handle;
 static Simulation* S;
 
 static Simulation* CreateSimulation(const std::string& lib)
 {
 	std::cout << "Loading Shared Library: " << lib << std::endl;
-	handle = dlopen(lib.c_str(), RTLD_NOW);
-	if(handle == nullptr)
+
+	handle = LoadSharedLibrary(lib.c_str());
+	if(handle == NULL)
 	{
 		std::cout << "\tError loading library: " << lib << std::endl;
-		std::cerr << dlerror() << std::endl;
+		#ifdef __linux__
+			std::cerr << dlerror() << std::endl;
+		#endif
 		exit(1);
 	}
 	std::cout << "\tLoading Symbols..." << std::endl;
-	Simulation* (*create)() = (Simulation* (*)())dlsym(handle, "create_object");
+	Simulation* (*create)() = (Simulation* (*)())LoadFunction(handle, "create_object");
 
 	std::cout << "\tLibrary loading completed" << std::endl << std::endl;
 
@@ -51,8 +67,18 @@ static Simulation* CreateSimulation(const std::string& lib)
 
 static void DestroySimulation(Simulation* s)
 {
-	void (*destroy)(Simulation*) = (void (*)(Simulation*))dlsym(handle, "destroy_object");
+	void (*destroy)(Simulation*) = (void (*)(Simulation*))LoadFunction(handle, "destroy_object");
 	destroy(s);
+	FreeSharedLibrary(handle);
+}
+
+Vector2i LocationToScreen(Vector2d Location, int w, int h)
+{
+	Vector2d Screen = {w, h};
+	int Dim = Screen.minCoeff();
+	Vector2d ScaledLocation = Location * Dim/2;
+	Vector2d MovedLocation = ScaledLocation + Screen/2;
+	return Vector2i(MovedLocation(0), MovedLocation(1));
 }
 
 static void PerformSimulation()
@@ -66,11 +92,9 @@ static void PerformSimulation()
 	SDL_Renderer* renderer;
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_CreateWindowAndRenderer(w, h, 0, &window, &renderer);
-
 	SDL_SetWindowTitle(window, S->MD.Name.c_str());
 
 	auto last = std::chrono::high_resolution_clock::now();
-
 	bool q = false;
 	while(!q)
 	{
@@ -91,10 +115,9 @@ static void PerformSimulation()
 
 		for(Particle* P : S->ParticleList)
 		{
-			Vector2d T = {w/2, h/2};
-			Vector2d TL = P->Location.head<2>() + T;
-			SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-			SDLG_RenderCircle(renderer, TL(0), TL(1), std::round(std::max(w, h)*P->R));
+			Vector2i L = LocationToScreen(P->Location.head<2>(), w, h);
+			SDL_SetRenderDrawColor(renderer, P->Color(0), P->Color(1), P->Color(2), 255);
+			SDLG_RenderCircle(renderer, L(0), L(1), std::round(std::max(w, h)*P->R));
 		}
 
 		SDL_RenderPresent(renderer);
@@ -109,8 +132,7 @@ static void PerformSimulation()
 
 using CommandMap = std::map<std::string, std::function<void(int&, char**)>>;
 CommandMap COMMANDLET_LIST = {
-	{"-create",		[](int& i, char** argv) { S = CreateSimulation(std::string(argv[i+1])); }},
-	{"-execute",	[](int& i, char** argv) { PerformSimulation(); }}
+	{"-execute",	[](int& i, char** argv) { S = CreateSimulation(std::string(argv[i+1])); PerformSimulation(); }}
 };
 
 int main(int argc, char** argv)

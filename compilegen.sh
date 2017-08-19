@@ -1,6 +1,6 @@
 # KMake - because a Makefile with small projects is for losers!
 #!/bin/bash
-
+cd "${0%/*}"
 
 if [ -z "$1" ]; then
 	GENERATORS=$(find examples -name '*.cpp')
@@ -22,7 +22,7 @@ for g in $GENERATORS; do
 			fi
 		done < $f
 	done
-	g++ $CPP_FILES -fPIC -shared -o $(basename -s .cpp $g).so \
+	g++ $CPP_FILES -fPIC -shared -o build/$(basename -s .cpp $g).so \
 		-std=c++1z -Iinclude \
 		$(pkg-config eigen3 --cflags --libs) \
 		-ldl -g -pipe

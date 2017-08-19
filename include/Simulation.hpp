@@ -23,8 +23,7 @@ struct Particle
 
 	// Display
 	double R;
-
-	std::function<void(double)> PreUpdate;
+	Vector3i Color;
 
 	void ApplyForce(Vector3d Force, double dt)
 	{
@@ -55,11 +54,6 @@ public:
 
 	void StepTime(double dt)
 	{
-		for(Particle* P : this->ParticleList)
-		{
-			if(P->PreUpdate != nullptr)
-				P->PreUpdate(dt);
-		}
 		PreUpdate(dt);
 		for(Particle* P : this->ParticleList)
 		{
