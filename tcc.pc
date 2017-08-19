@@ -1,0 +1,12 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: Tiny C Compiler (TCC)
+Description: Tiny C Compiler library
+Version: 1.2.11
+
+Requires:
+Libs: -L${libdir} -ltcc -ldl
+Cflags: -I${includedir}

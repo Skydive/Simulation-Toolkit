@@ -7,13 +7,7 @@
 #include <Eigen/Core>
 using namespace Eigen;
 
-struct MetaData
-{
-	std::string Name;
-	int Width;
-	int Height;
-	double TimeScale;
-};
+#include <SimulationWrapper.hh>
 
 struct Particle
 {
@@ -28,11 +22,6 @@ struct Particle
 	void ApplyForce(Vector3d Force, double dt)
 	{
 		this->Velocity += Force*dt / this->Mass;
-	};
-
-	void Update(double dt)
-	{
-		this->Location += this->Velocity*dt;
 	};
 };
 
@@ -57,7 +46,7 @@ public:
 		PreUpdate(dt);
 		for(Particle* P : this->ParticleList)
 		{
-			P->Update(dt);
+			P->Location += P->Velocity*dt;
 		}
 		this->Time += dt;
 	}

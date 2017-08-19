@@ -17,6 +17,6 @@ for f in $files; do
 done
 g++ $CPP_FILES -o build/main \
 	-std=c++1z -Iinclude \
-	$(pkg-config eigen3 sdl2 --cflags --libs) \
+	$(pkg-config eigen3 sdl2 tcc.pc --cflags --libs) \
 	-g -pipe \
-	-ldl -Wl,--rpath=./
+	-Wl,--rpath=./

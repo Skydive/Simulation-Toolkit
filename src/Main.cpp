@@ -5,7 +5,7 @@
 #include <string>
 #include <functional>
 
-
+/*
 #ifdef __linux__
 	#include <dlfcn.h>
 	#define SharedLibrary void*
@@ -21,13 +21,16 @@
 	#define LoadFunction(dllhandle, fstr) GetProcAddress(dllhandle, fstr)
 	#include <SDL2/SDL.h>
 #endif
+*/
 
 #include <cstdlib>
 
 #include <chrono>
 #include <cmath>
 
-#include <Simulation.hpp>
+#include <libtcc.h>
+
+#include "Simulation.hpp"
 
 
 static void SDLG_RenderCircle(SDL_Renderer* renderer, int x, int y, int r)
@@ -38,8 +41,7 @@ static void SDLG_RenderCircle(SDL_Renderer* renderer, int x, int y, int r)
 				SDL_RenderDrawPoint(renderer, x+i, y+j);
 }
 
-static SharedLibrary handle;
-static Simulation* S;
+/*static SharedLibrary handle;
 
 static Simulation* CreateSimulation(const std::string& lib)
 {
@@ -70,6 +72,38 @@ static void DestroySimulation(Simulation* s)
 	void (*destroy)(Simulation*) = (void (*)(Simulation*))LoadFunction(handle, "destroy_object");
 	destroy(s);
 	FreeSharedLibrary(handle);
+}*/
+
+#include <SimulationWrapper.hh>
+static TCCState* tcc_state;
+#define NAME_LENGTH 64
+static void(*)(char*, int, int*, int*, double*) metadata_func;
+static void(*)() setup_func;
+static void(*)(double) update_func;
+static Simulation* S;
+static Simulation* CreateSimulation(const std::string& file)
+{
+	tcc_state = tcc_new();
+	tcc_set_output_type(tcc_state, TCC_OUTPUT_MEMORY);
+	tcc_add_file(tcc_state, file.c_str());
+
+	void* mem = malloc(tcc_relocate(s, NULL)); tcc_relocate(tcc_state, mem);
+
+	metadata_func = reinterpret_cast<void(*)(char*, int*, int*, int*, double*)>(tcc_get_symbol(tcc_state, "SetMetadata"));
+	setup_func = reinterpret_cast<void(*)()>(tcc_get_symbol(tcc_state, "Setup"));
+	update_func = reinterpret_cast<void(*)(double)>(tcc_get_symbol(tcc_state, "Update"));
+
+	char windowName[NAME_LENGTH];
+	int w, h;
+	double dt;
+	metadata_func(windowName, NAME_LENGTH, &w, &h, &dt);
+	setup_func();
+}
+
+static void DestroySimulation()
+{
+	tcc_delete(s);
+	free(mem);
 }
 
 Vector2i LocationToScreen(Vector2d Location, int w, int h)
@@ -135,8 +169,21 @@ CommandMap COMMANDLET_LIST = {
 	{"-execute",	[](int& i, char** argv) { S = CreateSimulation(std::string(argv[i+1])); PerformSimulation(); }}
 };
 
+
+struct Memes
+{
+	int a;
+	int b;
+	void test()
+	{
+		printf("Hello, world!");
+	}
+};
+
+int add(int a, int b) { return a+b; }
 int main(int argc, char** argv)
 {
+
 	for(int i=1; i<argc; i++)
 		if(COMMANDLET_LIST.find(std::string(argv[i])) != COMMANDLET_LIST.end())
 			COMMANDLET_LIST[std::string(argv[i])](i, argv);
